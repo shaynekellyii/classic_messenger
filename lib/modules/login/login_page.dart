@@ -1,12 +1,28 @@
 import 'package:classic_messenger/components/components.dart';
+import 'package:classic_messenger/services/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_it/get_it.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const LoginView();
+    return BlocProvider(
+      create: (_) => AuthBloc(
+        googleSignIn: GetIt.I.get<GoogleSignIn>(),
+        firebaseAuth: GetIt.I.get<FirebaseAuth>(),
+        firebaseFirestore: GetIt.I.get<FirebaseFirestore>(),
+        prefs: GetIt.I.get<SharedPreferences>(),
+      ),
+      child: const LoginView(),
+    );
   }
 }
 
@@ -15,21 +31,27 @@ class LoginView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const CmScaffold(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _SignInHeader(),
-              SizedBox(height: 20.0),
-              Center(child: CmFramedAvatar()),
-              SizedBox(height: 20.0),
-              _LoginForm(),
-              _LoginActions(),
-              _LoginFooter()
-            ],
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) => switch (state) {
+        AuthState.authenticated => context.go('/home'),
+        _ => null,
+      },
+      child: const CmScaffold(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.0),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SignInHeader(),
+                SizedBox(height: 20.0),
+                Center(child: CmFramedAvatar()),
+                SizedBox(height: 20.0),
+                _LoginForm(),
+                _LoginActions(),
+                _LoginFooter()
+              ],
+            ),
           ),
         ),
       ),
@@ -111,7 +133,18 @@ class _LoginActions extends StatelessWidget {
             CmStatusSelector(),
           ],
         ),
-        CmButton(label: 'Sign in', onTap: () {}),
+        Row(
+          children: [
+            CmButton(label: 'Sign in', onTap: () {}),
+            const SizedBox(width: 10.0),
+            CmButton(
+              label: 'Sign in with Google',
+              onTap: () =>
+                  context.read<AuthBloc>().add(SignInWithGoogleRequested()),
+              leading: Image.asset(CmImages.icGoogle),
+            ),
+          ],
+        ),
         Row(
           children: [
             const Text('Don\'t have a Classic Live ID?'),
